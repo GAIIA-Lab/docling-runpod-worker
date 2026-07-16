@@ -198,7 +198,7 @@ image without cloning the repository:
 
 1. In RunPod Serverless, select **New Endpoint** → **Import from Docker Registry**.
 2. Use `ghcr.io/gaiia-lab/docling-runpod-worker:latest` as the container image.
-3. Select a CUDA 12.4-compatible GPU and set `MODE_TO_RUN=serverless`.
+3. Select a CUDA 12.8-compatible GPU and set `MODE_TO_RUN=serverless`.
 4. Deploy the endpoint, then submit a synchronous test:
 
 ```bash
