@@ -7,13 +7,20 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
+RUN apt-get update \
+    && apt-get install --only-upgrade -y --no-install-recommends linux-libc-dev \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt /app/requirements.txt
 
 RUN python -c "import torch; assert torch.__version__.startswith('2.8.'), torch.__version__"
 
-RUN pip install --no-cache-dir -r /app/requirements.txt
+RUN pip install --no-cache-dir -r /app/requirements.txt \
+    && pip install --no-cache-dir --upgrade "jupyter-server>=2.20.0,<3"
 
-RUN rm -f /usr/local/bin/filebrowser
+RUN rm -f /usr/local/bin/filebrowser \
+    && find /opt/nvidia/nsight-compute -type f \
+        -path '*/plugins/efa_metrics/nic_sampler' -delete
 
 COPY handler.py /app/handler.py
 COPY local_test.py /app/local_test.py
