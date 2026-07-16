@@ -13,6 +13,8 @@ RUN python -c "import torch; assert torch.__version__.startswith('2.8.'), torch.
 
 RUN pip install --no-cache-dir -r /app/requirements.txt
 
+RUN rm -f /usr/local/bin/filebrowser
+
 COPY handler.py /app/handler.py
 COPY local_test.py /app/local_test.py
 COPY src /app/src
