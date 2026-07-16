@@ -6,7 +6,7 @@
 ## Positioning
 - This project is a standalone PDF extraction worker.
 - Keep it reusable across products and pipelines.
-- Do not couple it to `intel-weave-scan`, Lovable, or Supabase schemas.
+- Do not couple it to any caller-specific platform, database, or schema.
 
 ## Scope
 - Accept one extraction job.

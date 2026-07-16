@@ -2,6 +2,9 @@
 
 Reusable GPU-backed PDF extraction worker for RunPod Serverless.
 
+[![Licence: Apache 2.0](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE)
+[![Publish image](https://github.com/GAIIA-Lab/docling-runpod-worker/actions/workflows/publish.yml/badge.svg)](https://github.com/GAIIA-Lab/docling-runpod-worker/actions/workflows/publish.yml)
+
 This repository is a small service boundary around Docling: give it a publicly
 reachable PDF URL, and it returns normalized markdown/text plus extraction
 metadata. It can be used by any product, pipeline, or internal tool that needs
@@ -64,7 +67,7 @@ Optional fields:
 | `document_id` | Optional caller document identifier. Included in callback payloads when provided. |
 | `file_name` | Optional original file name. Included in callback payloads when provided. |
 
-Compatibility aliases:
+`source_url` is accepted as a compatibility alias for `pdf_url`:
 
 ```json
 {
@@ -72,7 +75,6 @@ Compatibility aliases:
     "job_id": "job-123",
     "source_url": "https://example.com/report.pdf",
     "document_id": "doc-1",
-    "analysis_run_id": "run-1",
     "file_name": "report.pdf",
     "callback_url": "https://example.com/api/pdf-extraction-callback",
     "callback_secret": "shared-secret"
@@ -80,9 +82,7 @@ Compatibility aliases:
 }
 ```
 
-`source_url` is accepted as an alias for `pdf_url`. `analysis_run_id` is kept as
-a legacy correlation field for callers that already use that name; new callers
-should prefer putting app-specific identifiers in `metadata`.
+Put caller-specific correlation identifiers in `metadata`.
 
 ## Response contract
 
@@ -131,6 +131,7 @@ callback-friendly fields:
 - `stage`: `completed` or `failed`
 - `progress`: `100` for success, `0` for failure
 - `extractor_version`
+- caller-provided `metadata`, when present
 - `status`: `succeeded` on success, `failed` on failure
 - flattened success fields: `extracted_text`, `title`, `word_count`,
   `page_count`, `table_count`, `duration_seconds`, `source_url`
@@ -190,6 +191,27 @@ See `.env.example`.
 | `CALLBACK_TIMEOUT_SECONDS` | `20` | Timeout for callback POST requests. |
 | `EXTRACTOR_VERSION` | `docling-runpod-worker/0.1` | Version string included in callback payloads. |
 
+## Quick start on RunPod
+
+This worker uses a queue-based Serverless endpoint. You can deploy the published
+image without cloning the repository:
+
+1. In RunPod Serverless, select **New Endpoint** → **Import from Docker Registry**.
+2. Use `ghcr.io/gaiia-lab/docling-runpod-worker:latest` as the container image.
+3. Select a CUDA 12.4-compatible GPU and set `MODE_TO_RUN=serverless`.
+4. Deploy the endpoint, then submit a synchronous test:
+
+```bash
+curl --request POST \
+  --url "https://api.runpod.ai/v2/<endpoint-id>/runsync" \
+  --header "Authorization: Bearer <runpod-api-key>" \
+  --header "Content-Type: application/json" \
+  --data '{"input":{"job_id":"test-1","pdf_url":"https://example.com/report.pdf"}}'
+```
+
+Use a version tag or image digest instead of `latest` for production so a
+deployment can be reproduced and rolled back.
+
 ## Local development
 
 Create a virtual environment and install dependencies:
@@ -214,12 +236,25 @@ Run the RunPod SDK local server:
 MODE_TO_RUN=serverless python handler.py --rp_serve_api
 ```
 
-## Deployment
+## Build and publish your own image
 
-1. Build the Docker image.
-2. Push it to a container registry.
-3. Create a RunPod Serverless endpoint from that image.
-4. Set `MODE_TO_RUN=serverless` in the endpoint environment.
+Fork this repository and enable GitHub Actions. Pushes to your fork's `main`
+branch publish an image to:
+
+```text
+ghcr.io/<your-github-owner>/docling-runpod-worker:latest
+```
+
+The workflow also publishes immutable `sha-*` tags and version tags for Git
+tags matching `v*`. Make the resulting package public if RunPod should pull it
+without registry credentials.
+
+To build locally instead:
+
+```bash
+docker build --platform linux/amd64 \
+  --tag ghcr.io/<your-github-owner>/docling-runpod-worker:latest .
+```
 
 The container entrypoint is:
 
@@ -227,14 +262,18 @@ The container entrypoint is:
 python -u handler.py
 ```
 
-Example image name:
+See RunPod's [worker deployment guide](https://docs.runpod.io/serverless/workers/deploy)
+for endpoint configuration and registry alternatives.
 
-```text
-ghcr.io/<owner>/docling-runpod-worker:latest
-```
+## Security notes
 
-If you use GitHub Container Registry, configure a GitHub Actions workflow or
-your own CI to publish the image on pushes to your deployment branch.
+- Treat the RunPod API key and `callback_secret` as secrets; never commit them.
+- Only submit URLs you trust. The worker makes outbound requests to `pdf_url`
+  and `callback_url`, so exposing the endpoint to untrusted callers creates a
+  server-side request forgery risk.
+- Set RunPod execution timeouts and spending limits appropriate to your use
+  case. PDF size and complexity directly affect GPU time and memory use.
+- Pin a version tag or digest in production instead of using `latest`.
 
 ## Integration pattern
 
@@ -250,3 +289,8 @@ The recommended application architecture is:
 This keeps the extraction layer replaceable. If you later move from RunPod to
 another GPU provider, or from Docling to another extractor, your main
 application only needs to preserve the request/response contract.
+
+## Contributing and licence
+
+Contributions are welcome; see [CONTRIBUTING.md](CONTRIBUTING.md). This project
+is licensed under the [Apache License 2.0](LICENSE).

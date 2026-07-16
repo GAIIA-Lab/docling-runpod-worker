@@ -82,11 +82,10 @@ def get_converter() -> DocumentConverter:
         do_code_enrichment=False,
         do_formula_enrichment=False,
         do_picture_classification=False,
-        pdf_backend=DoclingParseV4DocumentBackend,
         ocr_batch_size=16,
         layout_batch_size=CONFIG.layout_batch_size,
         table_batch_size=CONFIG.table_batch_size,
-        queue_size=CONFIG.queue_size,
+        queue_max_size=CONFIG.queue_size,
         generate_page_images=False,
         images_scale=1.0,
     )
@@ -99,6 +98,7 @@ def get_converter() -> DocumentConverter:
     return DocumentConverter(
         format_options={
             InputFormat.PDF: PdfFormatOption(
+                backend=DoclingParseV4DocumentBackend,
                 pipeline_cls=ThreadedStandardPdfPipeline,
                 pipeline_options=pipeline_options,
             )
