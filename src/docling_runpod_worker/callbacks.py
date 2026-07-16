@@ -11,11 +11,11 @@ def build_callback_payload(request: JobRequest, response: JobResponse) -> dict:
     payload["stage"] = "completed" if response.ok else "failed"
     payload["progress"] = 100 if response.ok else 0
     payload["extractor_version"] = CONFIG.extractor_version
+    if request.metadata:
+        payload["metadata"] = request.metadata
 
     if request.document_id:
         payload["document_id"] = request.document_id
-    if request.analysis_run_id:
-        payload["analysis_run_id"] = request.analysis_run_id
     if request.file_name:
         payload["file_name"] = request.file_name
 
